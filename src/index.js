@@ -59,18 +59,13 @@ const typeDefs = gql`
     content: String
   }
 
-  input PostWhereInput {
-    skip: Int
-    take: Int
-  }
-
   input PostWhereUniqueInput {
     id: ObjectID
   }
 
   type Query {
     currentUser: User
-    posts(where: PostWhereInput): [Post]
+    posts(offset: Int, limit: Int): [Post]
     post(where: PostWhereUniqueInput!): Post
   }
 
@@ -124,21 +119,19 @@ const resolvers = {
     },
     posts: async (_parent, args, context, _info) => {
       const postCollection = context.mongo.collection('posts')
-      let skip = 0
+      let offset = 0
       let limit = 10
 
-      if (args.where) {
-        if (args.where.skip) {
-          skip = args.where.skip
-        }
-        if (args.where.take) {
-          limit = args.where.take
-        }
+      if (args.offset) {
+        offset = args.offset
+      }
+      if (args.limit) {
+        limit = args.limit
       }
       const posts = await postCollection.find({}, {
-        skip: skip,
+        skip: offset,
         limit: limit,
-      }).toArray()
+      }).sort({ createdAt: -1 }).toArray()
       return posts.map(post => ({ ...post, id: post._id }))
     },
     post: async (_parent, args, { mongo }, _info) => {
@@ -237,7 +230,10 @@ const resolvers = {
           }
         }
         const postCollection = mongo.collection('posts')
-        const updatePost = await postCollection.findOneAndUpdate({ _id: ObjectID(args.where.id) }, { $inc: { likes: 1 } })
+        const updatePost = await postCollection.findOneAndUpdate(
+          { _id: ObjectID(args.where.id) },
+          { $inc: { likes: 1 } },
+          { returnOriginal: false })
         if (updatePost.value) {
           return {
             ...updatePost.value,
@@ -268,7 +264,8 @@ const resolvers = {
         if (newUser.insertedCount === 1) {
           return {
             token: jwt.sign({ id: newUser.insertedId }, process.env.JWT_SECRET),
-            success: true
+            success: true,
+            message: "User created successfully!"
           }
         } else {
           return {
@@ -293,7 +290,8 @@ const resolvers = {
             algorithm: "HS256",
             expiresIn: '1d'
           }),
-          success: true
+          success: true,
+          message: 'User signed in successfully!'
         }
       } else {
         return {

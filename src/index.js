@@ -100,21 +100,21 @@ const resolvers = {
   Query: {
     currentUser: async (_parent, args, { mongo, req: { user } }, _info) => {
       try {
-        if (user.id) {
+        if (user === undefined) {
           throw new UserInputError('Invalid user id!')
         }
         const userCollection = mongo.collection('users')
-        const user = await userCollection.findOne({ _id: ObjectID(user.id) }, { projection: { _id: 1, userName: 1 } })
-        if (user === null) {
+        const currentUser = await userCollection.findOne({ _id: ObjectID(user.id) }, { projection: { _id: 1, userName: 1 } })
+        if (currentUser === null) {
           throw new UserInputError('Invalid user id!')
         } else {
           return {
-            id: user._id,
-            userName: user.userName
+            id: currentUser._id,
+            userName: currentUser.userName
           }
         }
       } catch (error) {
-        throw new Error('Invalid auth token!')
+        return error
       }
     },
     posts: async (_parent, args, context, _info) => {
@@ -309,10 +309,18 @@ const app = express()
 app.use(expressJwt({
   secret: process.env.JWT_SECRET,
   algorithms: ["HS256"],
-  credentialsRequired: false
+  credentialsRequired: false,
+  getToken: function fromHeaderOrQuerystring(req) {
+    if (req.headers.authorization && req.headers.authorization.split(' ')[0] === 'Bearer') {
+      return req.headers.authorization.split(' ')[1]
+    } else if (req.query && req.query.token) {
+      return req.query.token
+    }
+    return null
+  }
 }))
-app.use(cors({ origin: true }))
-server.applyMiddleware({ app, cors: { origin: true } })
+app.use(cors({ origin: '*' }))
+server.applyMiddleware({ app, cors: { origin: '*' } })
 
 app.listen({ port: 4000 }, () =>
   console.log(`🚀 Server ready at http://localhost:4000${server.graphqlPath}`)

@@ -221,6 +221,39 @@ const resolvers = {
         }
       }
     },
+    updatePost: async (_parent, args, { mongo, req: { user } }, _info) => {
+      try {
+        if (user === undefined) {
+          return {
+            success: false,
+            message: 'User not found!'
+          }
+        }
+        const postCollection = mongo.collection('posts')
+        const updatePost = await postCollection.findOneAndUpdate(
+          { _id: ObjectID(args.where.id) },
+          { $set: args.data },
+          { returnOriginal: false })
+        if (updatePost.value) {
+          return {
+            ...updatePost.value,
+            id: updatePost.value._id,
+            success: true,
+            message: 'Post updated successfully!'
+          }
+        } else {
+          return {
+            success: false,
+            message: 'Post does not exist!'
+          }
+        }
+      } catch (error) {
+        return {
+          success: false,
+          message: 'Something went wrong!'
+        }
+      }
+    },
     likePost: async (_parent, args, { mongo, req: { user } }, _info) => {
       try {
         if (user === undefined) {

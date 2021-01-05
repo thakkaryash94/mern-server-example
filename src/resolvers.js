@@ -182,12 +182,6 @@ module.exports = {
     },
     likePost: async (_parent, args, { mongo, req: { user } }, _info) => {
       try {
-        if (user === undefined) {
-          return {
-            success: false,
-            message: 'User not found!'
-          }
-        }
         const postCollection = mongo.collection('posts')
         const updatePost = await postCollection.findOneAndUpdate(
           { _id: ObjectID(args.where.id) },

@@ -10,7 +10,7 @@ const resolvers = require('./resolvers')
 const context = async ({ req }) => {
   const client = new MongoClient(process.env.DB_URL, { useUnifiedTopology: true })
   await client.connect()
-  const database = client.db('demo_news')
+  const database = client.db('blogs')
   return {
     req: req,
     mongo: database
